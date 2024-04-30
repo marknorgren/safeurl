@@ -1,4 +1,4 @@
-module github.com/doyensec/safeurl
+module github.com/marknorgren/safeurl
 
 go 1.17
 
