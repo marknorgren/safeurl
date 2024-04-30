@@ -151,6 +151,45 @@ func Client(config *Config) *WrappedClient {
 	return wc
 }
 
+func ClientCustomTransport(config *Config, transport http.RoundTripper) *WrappedClient {
+	tlsConfig := config.TlsConfig
+
+	var resolver *net.Resolver = nil
+	if config.InTestMode {
+		resolver = &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{}
+				return d.DialContext(ctx, "udp", "localhost:8053")
+			},
+		}
+	}
+
+	wc := &WrappedClient{
+		config:    config,
+		tlsConfig: tlsConfig,
+		resolver:  resolver,
+	}
+
+	if transport != nil {
+		wc.Client = buildHttpClientWithTransport(wc, transport)
+	} else {
+		wc.Client = buildHttpClient(wc)
+	}
+	return wc
+}
+
+func buildHttpClientWithTransport(wc *WrappedClient, transport http.RoundTripper) *http.Client {
+	client := &http.Client{
+		Timeout:       wc.config.Timeout,
+		CheckRedirect: wc.config.CheckRedirect,
+		Jar:           wc.config.Jar,
+		Transport:     transport,
+	}
+
+	return client
+}
+
 func (wc *WrappedClient) Head(url string) (resp *http.Response, err error) {
 	wc.log("calling proxied Head...")
 
